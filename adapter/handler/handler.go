@@ -24,6 +24,7 @@ type (
 func NewHandler(
 	config configuration.Config,
 	healthcheck Healthcheck,
+	slack SlackHandler,
 ) Handler {
 	router := chi.NewRouter()
 
@@ -34,6 +35,7 @@ func NewHandler(
 	router.Use(middleware.Timeout(60 * time.Second))
 
 	router.Mount("/healthcheck", healthcheck)
+	router.Mount("/slack", slack)
 
 	return &handler{
 		config: config,
