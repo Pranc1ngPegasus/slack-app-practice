@@ -49,6 +49,11 @@ type (
 	}
 
 	SlashCommandResponseBlock struct {
+		Type string                        `json:"type"`
+		Text SlashCommandResponseBlockText `json:"text"`
+	}
+
+	SlashCommandResponseBlockText struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
 	}
@@ -64,8 +69,11 @@ func post(w http.ResponseWriter, r *http.Request) {
 		ResponseType: "in_channel",
 		Blocks: []SlashCommandResponseBlock{
 			{
-				Type: "mrkdwn",
-				Text: r.Form.Get("text"),
+				Type: "section",
+				Text: SlashCommandResponseBlockText{
+					Type: "mrkdwn",
+					Text: r.Form.Get("text"),
+				},
 			},
 		},
 	})
