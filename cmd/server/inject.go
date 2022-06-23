@@ -1,3 +1,4 @@
+//go:build wireinject
 // +build wireinject
 
 package main
@@ -17,6 +18,7 @@ func initialize() *http.Server {
 		configuration.Get,
 
 		handler.NewHealthcheck,
+		handler.NewSlackHandler,
 		handler.NewHandler,
 
 		server.NewServer,
