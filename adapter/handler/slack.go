@@ -5,6 +5,8 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	"github.com/rs/zerolog/log"
+	"github.com/slack-go/slack"
 )
 
 var _ SlackHandler = (*slackHandler)(nil)
@@ -60,6 +62,17 @@ type (
 )
 
 func post(w http.ResponseWriter, r *http.Request) {
+	s, err := slack.SlashCommandParse(r)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		return
+	}
+
+	log.Info().Msgf("%+v", r.Header)
+	if !s.ValidateToken(r.Header.Get("X-Slack-Signature")) {
+		render.Status(r, http.StatusBadRequest)
+		return
+	}
 	if err := r.ParseForm(); err != nil {
 		render.Status(r, http.StatusBadRequest)
 		return
