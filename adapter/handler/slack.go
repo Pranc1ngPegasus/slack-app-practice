@@ -1,11 +1,12 @@
 package handler
 
 import (
+	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
-	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
 )
 
@@ -61,38 +62,27 @@ type (
 	}
 )
 
+const (
+	signingSecret = "51d17822124404b5fb41d83a12e38aac"
+)
+
 func post(w http.ResponseWriter, r *http.Request) {
-	s, err := slack.SlashCommandParse(r)
+	sv, err := slack.NewSecretsVerifier(r.Header, signingSecret)
 	if err != nil {
-		render.JSON(w, r, SlashCommandResponse{
-			ResponseType: "in_channel",
-			Blocks: []SlashCommandResponseBlock{
-				{
-					Type: "section",
-					Text: SlashCommandResponseBlockText{
-						Type: "mrkdwn",
-						Text: err.Error(),
-					},
-				},
-			},
-		})
+		errorResponse(w, r, err)
 		return
 	}
 
-	log.Info().Msgf("%+v", r.Header)
-	if !s.ValidateToken(r.Header.Get("X-Slack-Signature")) {
-		render.JSON(w, r, SlashCommandResponse{
-			ResponseType: "in_channel",
-			Blocks: []SlashCommandResponseBlock{
-				{
-					Type: "section",
-					Text: SlashCommandResponseBlockText{
-						Type: "mrkdwn",
-						Text: "failed to validate token",
-					},
-				},
-			},
-		})
+	r.Body = ioutil.NopCloser(io.TeeReader(r.Body, &sv))
+	s, err := slack.SlashCommandParse(r)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := sv.Ensure(); err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		errorResponse(w, r, err)
 		return
 	}
 
@@ -104,6 +94,21 @@ func post(w http.ResponseWriter, r *http.Request) {
 				Text: SlashCommandResponseBlockText{
 					Type: "mrkdwn",
 					Text: s.Text,
+				},
+			},
+		},
+	})
+}
+
+func errorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	render.JSON(w, r, SlashCommandResponse{
+		ResponseType: "ephemeral",
+		Blocks: []SlashCommandResponseBlock{
+			{
+				Type: "section",
+				Text: SlashCommandResponseBlockText{
+					Type: "mrkdwn",
+					Text: err.Error(),
 				},
 			},
 		},
