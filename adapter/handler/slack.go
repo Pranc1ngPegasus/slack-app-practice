@@ -73,10 +73,6 @@ func post(w http.ResponseWriter, r *http.Request) {
 		render.Status(r, http.StatusBadRequest)
 		return
 	}
-	if err := r.ParseForm(); err != nil {
-		render.Status(r, http.StatusBadRequest)
-		return
-	}
 
 	render.JSON(w, r, SlashCommandResponse{
 		ResponseType: "in_channel",
@@ -85,7 +81,7 @@ func post(w http.ResponseWriter, r *http.Request) {
 				Type: "section",
 				Text: SlashCommandResponseBlockText{
 					Type: "mrkdwn",
-					Text: r.Form.Get("text"),
+					Text: s.Text,
 				},
 			},
 		},
