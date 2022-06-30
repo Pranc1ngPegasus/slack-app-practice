@@ -64,13 +64,35 @@ type (
 func post(w http.ResponseWriter, r *http.Request) {
 	s, err := slack.SlashCommandParse(r)
 	if err != nil {
-		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, SlashCommandResponse{
+			ResponseType: "in_channel",
+			Blocks: []SlashCommandResponseBlock{
+				{
+					Type: "section",
+					Text: SlashCommandResponseBlockText{
+						Type: "mrkdwn",
+						Text: err.Error(),
+					},
+				},
+			},
+		})
 		return
 	}
 
 	log.Info().Msgf("%+v", r.Header)
 	if !s.ValidateToken(r.Header.Get("X-Slack-Signature")) {
-		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, SlashCommandResponse{
+			ResponseType: "in_channel",
+			Blocks: []SlashCommandResponseBlock{
+				{
+					Type: "section",
+					Text: SlashCommandResponseBlockText{
+						Type: "mrkdwn",
+						Text: "failed to validate token",
+					},
+				},
+			},
+		})
 		return
 	}
 
