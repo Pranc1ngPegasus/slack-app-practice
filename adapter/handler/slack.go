@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/Pranc1ngPegasus/slack-api-practice/adapter/configuration"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 	"github.com/slack-go/slack"
@@ -16,18 +17,47 @@ type (
 	SlackHandler http.Handler
 
 	slackHandler struct {
+		config configuration.Config
 		router http.Handler
 	}
 )
 
-func NewSlackHandler() SlackHandler {
+func NewSlackHandler(
+	config configuration.Config,
+) SlackHandler {
 	router := chi.NewRouter()
+	h := &slackHandler{
+		config: config,
+		router: router,
+	}
+
+	router.Use(h.verifySlackToken)
 
 	router.Post("/", post)
 
-	return &slackHandler{
-		router: router,
+	return h
+}
+
+func (h *slackHandler) verifySlackToken(next http.Handler) http.Handler {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		sv, err := slack.NewSecretsVerifier(r.Header, h.config.Slack.SigningSecret)
+		if err != nil {
+			errorResponse(w, r, err)
+			return
+		}
+
+		r.Body = ioutil.NopCloser(io.TeeReader(r.Body, &sv))
+
+		if err := sv.Ensure(); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			errorResponse(w, r, err)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	}
+
+	return http.HandlerFunc(handler)
 }
 
 func (h *slackHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -62,26 +92,10 @@ type (
 	}
 )
 
-const (
-	signingSecret = "51d17822124404b5fb41d83a12e38aac"
-)
-
 func post(w http.ResponseWriter, r *http.Request) {
-	sv, err := slack.NewSecretsVerifier(r.Header, signingSecret)
-	if err != nil {
-		errorResponse(w, r, err)
-		return
-	}
-
-	r.Body = ioutil.NopCloser(io.TeeReader(r.Body, &sv))
 	s, err := slack.SlashCommandParse(r)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := sv.Ensure(); err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
 		errorResponse(w, r, err)
 		return
 	}

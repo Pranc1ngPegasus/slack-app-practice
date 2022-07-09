@@ -9,6 +9,10 @@ import (
 type (
 	Config struct {
 		ListenPort string `required:"true" envconfig:"PORT" default:"3000"`
+
+		Slack struct {
+			SigningSecret string `required:"true" envconfig:"SLACK_SIGNING_SECRET" default:""`
+		}
 	}
 )
 
