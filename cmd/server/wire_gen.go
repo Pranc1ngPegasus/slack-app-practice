@@ -18,7 +18,7 @@ import (
 func initialize() *http.Server {
 	config := configuration.Get()
 	healthcheck := handler.NewHealthcheck(config)
-	slackHandler := handler.NewSlackHandler()
+	slackHandler := handler.NewSlackHandler(config)
 	handlerHandler := handler.NewHandler(config, healthcheck, slackHandler)
 	httpServer := server.NewServer(config, handlerHandler)
 	return httpServer
